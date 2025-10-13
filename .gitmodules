@@ -1,0 +1,3 @@
+[submodule "Ego-ST"]
+	path = Ego-ST
+	url = https://github.com/WPR001/Ego-ST.git
