@@ -46,7 +46,7 @@ These are required for video recording and image capture.
 
 ---
 
-## 💾 5. Record Videos or Screenshots (Important!!)
+## 💾 5. Record Videos or Capture (Important!!)
 1. Run the provided **Python script** to:
    - Record video streams
    - Capture screenshots
