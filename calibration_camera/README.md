@@ -1,94 +1,110 @@
-# ONNX-CREStereo-Depth-Estimation
- Python scripts performing stereo depth estimation using the CREStereo model in ONNX.
- 
-![!CREStereo detph estimation](https://github.com/ibaiGorordo/ONNX-CREStereo-Depth-Estimation/blob/main/doc/img/out.jpg)
-*Stereo depth estimation on the cones images from the Middlebury dataset (https://vision.middlebury.edu/stereo/data/scenes2003/)*
+# Stereo Camera Calibration (Intrinsics & Extrinsics) — Workflow
 
-# Requirements
+This README documents a **complete, reproducible pipeline** to calibrate **camera intrinsics** and **stereo extrinsics**, export parameters to YAML, and quickly validate with rectification and a depth demo.
 
- * Check the **requirements.txt** file. 
- * For ONNX, if you have a NVIDIA GPU, then install the **onnxruntime-gpu**, otherwise use the **onnxruntime** library.
- * For OAK-D host inference, you will need the **depthai** library.
- * Additionally, **pafy** and **youtube-dl** are required for youtube video inference.
- 
-# Installation
+> Works with OpenCV 4.x on Windows/macOS/Linux. Chessboard or Charuco supported. Outputs are compatible with downstream scripts.
+
+---
+
+## 1) Environment
+
+```bash
+
+pip install opencv-python opencv-contrib-python numpy pyyaml matplotlib
+# Optional: for depth demo
+pip install open3d
 ```
-git clone https://github.com/ibaiGorordo/ONNX-CREStereo-Depth-Estimation.git
-cd ONNX-CREStereo-Depth-Estimation
-pip install -r requirements.txt
+If using system OpenCV, ensure it includes **contrib** (for Charuco).
+
+---
+
+## 2) Print or generate a calibration target
+
+- **Chessboard** (recommended): inner corners, e.g. `8x5` (9 columns × 6 rows of inner intersections).
+- **Charuco**: `DICT_4X4_100` or `DICT_5X5_100`, with known square size and marker size.
+- Measure **square size** precisely in **meters** (e.g., 0.030 m). You will need it as `--square 0.030`.
+
+> Keep the board **flat** and **rigid**. Avoid glossy lamination that causes glare.
+
+---
+
+## 3) Data capture (left/right image pairs or videos)
+
+Capture at least **20–40 distinct poses**:
+- Vary distance (near/far), tilt, yaw, and position.
+- Cover **all four corners** and center of the image.
+- Use **simultaneous** capture for stereo (ensure timestamps/pairs match).
+
+Folder structure (example):
 ```
-### ONNX Runtime
-For Nvidia GPU computers:
-`pip install onnxruntime-gpu`
-
-Otherwise:
-`pip install onnxruntime`
-
-### For youtube video inference
+calibration_images_dual_eye/
+  
+  cam1_xxx.png
+  cam1_xxx.png
+  ...
+  cam2_xxx.png
+  cam2_xxx.png
+  ...
 ```
-pip install youtube_dl
-pip install git+https://github.com/zizo-pro/pafy@b8976f22c19e4ab5515cacbfae0a3970370c102b
+> Filenames must match across cam1/cam2 (same count, same ordering), cam1 is the left one, cam2 is the right one.
+
+If you recorded videos, extract frames first (example command included below).
+
+---
+
+## 4) Intrinsic calibration (per camera)
+
+Run for **left** and **right** separately. You can use chessboard or Charuco.
+
+### 4.1 Chessboard intrinsics
+```bash
+python calibration_images_dual_eye/calibration_intrinsics.py 
 ```
 
-### OAK-D Host inference:
-```pip install depthai```
 
-You might need additional installations, check the depthai reference below for more details.
+**Outputs (YAML):**
+- `K` (3×3 camera matrix)
+- `D` (distortion: k1, k2, p1, p2, k3[, k4…])
+- `size` (width, height)
+- `rms` (reprojection error)
 
-# ONNX model
-The models were converted from the Pytorch implementation below by [PINTO0309](https://github.com/PINTO0309), download the models from the download script in [his repository](https://github.com/PINTO0309/PINTO_model_zoo/tree/main/284_CREStereo) and save them into the **[models](https://github.com/ibaiGorordo/ONNX-CREStereo-Depth-Estimation/tree/main/models)** folder. 
-- The License of the models is Apache-2.0 License: https://github.com/megvii-research/CREStereo/blob/master/LICENSE
+> **Target RMS**: typically **<0.5 px** for good lenses; **<1.0 px** is acceptable.
 
-# Original MegEngine model
-The original model was trained in the MegEngine framework: [original repository](https://github.com/megvii-research/CREStereo).
+---
 
-# Pytorch model
-The original MegEngine model was converted to Pytorch with this repository: https://github.com/ibaiGorordo/CREStereo-Pytorch
- 
-# Examples
+## 5) Stereo extrinsic calibration (R, T between cameras)
 
- * **Image inference**:
- ```
- python image_depth_estimation.py
- ```
+After **both** intrinsics are done:
 
- * **Video inference**:
- ```
- python video_depth_estimation.py
- ```
- 
- * **Driving Stereo dataset inference**: https://youtu.be/ciX7ILgpJtw
- ```
- python driving_stereo_test.py
- ```
- ![!CREStereo depth estimation](https://github.com/ibaiGorordo/ONNX-CREStereo-Depth-Estimation/blob/main/doc/img/crestereo.gif)
-  
- *Original video: Driving stereo dataset, reference below*
+```bash
+python calibration_images_dual_eye/stereo_calibration.py
+```
 
- * **Driving Stereo 3D point cloud visualization**: https://youtu.be/vlBbH28PgHk
- ```
- python driving_stereo_point_cloud.py
- ```
- ![!CREStereo depth estimation point cloud](https://github.com/ibaiGorordo/ONNX-CREStereo-Depth-Estimation/blob/main/doc/img/crestereo_point.gif)
-  
- *Original video: Driving stereo dataset, reference below*
-  
-  
+**Outputs (YAML):**
+- `K1`, `D1`, `K2`, `D2`
+- `R`, `T` (rotation & translation from left to right)
+- `R1`, `R2`, `P1`, `P2`, `Q` (rectification and reprojection matrices)
+- `rms_stereo` (stereo reprojection error)
+- `baseline` (meters), derived from `T`
 
- * **Depthai inference**: 
- ```
- python depthai_host_depth_estimation.py
- ```
-# Model option comparison (Nvidia 1660 Super)
-In the graph below, the different model options, i.e. input shape, version (init or combined) and number of iterations are combined. The comparison is done compared to the results obtained with the largest model (720x1280 combined with 20 iters), as it is expected to provide the best results. 
-- The size of the marker indicates the number of iterations, increasing with the number of iterations.
-![!CREStereo model option comparison](https://github.com/ibaiGorordo/ONNX-CREStereo-Depth-Estimation/blob/main/doc/img/crestereo_options_comp.png)
+> Tip: if you get **high RMS** (>1.0 px) or **odd baseline**, remove outliers images (blurred/extreme angles) and re-run.
 
-# References:
-* CREStereo model: https://github.com/megvii-research/CREStereo
-* CREStereo - Pytorch: https://github.com/ibaiGorordo/CREStereo-Pytorch
-* PINTO0309's model zoo: https://github.com/PINTO0309/PINTO_model_zoo
-* PINTO0309's model conversion tool: https://github.com/PINTO0309/openvino2tensorflow
-* Driving Stereo dataset: https://drivingstereo-dataset.github.io/
-* Depthai library: https://pypi.org/project/depthai/
-* Original paper: https://arxiv.org/abs/2203.11483
+---
+
+
+
+---
+
+## 12) References
+
+- OpenCV Camera Calibration: <https://docs.opencv.org/master/dc/dbb/tutorial_py_calibration.html>
+- Stereo Calibration + Rectification: <https://docs.opencv.org/master/dd/d53/tutorial_py_depthmap.html>
+- Charuco Boards: <https://docs.opencv.org/master/d9/d6a/group__aruco.html>
+- Hartley & Zisserman, *Multiple View Geometry in Computer Vision*, 2nd Ed.
+- Zach & Pock, *A Practical Guide to Optical Flow & Stereo Matching*, 2017 (lecture notes)
+
+---
+
+### Citation
+
+If this calibration pipeline or the resulting parameters are used in your publication or project, please cite your repo accordingly.
