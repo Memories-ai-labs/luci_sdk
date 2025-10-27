@@ -1,110 +1,215 @@
-# Stereo Camera Calibration (Intrinsics & Extrinsics) — Workflow
+Stereo Camera Calibration and Depth Estimation — Complete Workflow
+This README provides a comprehensive pipeline for calibrating camera intrinsics and stereo extrinsics,
+then validating results via enhanced OpenCV-based depth reconstruction and AI-based CREStereo depth estimation.
 
-This README documents a **complete, reproducible pipeline** to calibrate **camera intrinsics** and **stereo extrinsics**, export parameters to YAML, and quickly validate with rectification and a depth demo.
+Designed for reproducibility on Windows/macOS/Linux with OpenCV 4.x.
+Supports both Chessboard and Charuco calibration targets.
+Outputs are YAML-compatible and can be reused for 3D reconstruction, robot vision, or LUCI dual-eye experiments.
 
-> Works with OpenCV 4.x on Windows/macOS/Linux. Chessboard or Charuco supported. Outputs are compatible with downstream scripts.
-
----
-
-## 1) Environment
-
-```bash
-
+1) Environment Setup
+bash
+Copy
 pip install opencv-python opencv-contrib-python numpy pyyaml matplotlib
-# Optional: for depth demo
-pip install open3d
-```
-If using system OpenCV, ensure it includes **contrib** (for Charuco).
+# Optional for depth visualization & AI models
+pip install open3d torch torchvision timm
+⚠️ Make sure your OpenCV build includes contrib modules (for Charuco / ximgproc).
 
----
+2) Calibration Target
+Chessboard (recommended): e.g. inner corners = 8×5 (9 × 6 total squares)
 
-## 2) Print or generate a calibration target
+Charuco Board: e.g. DICT_5X5_100, specify both square & marker sizes
 
-- **Chessboard** (recommended): inner corners, e.g. `8x5` (9 columns × 6 rows of inner intersections).
-- **Charuco**: `DICT_4X4_100` or `DICT_5X5_100`, with known square size and marker size.
-- Measure **square size** precisely in **meters** (e.g., 0.030 m). You will need it as `--square 0.030`.
+Measure square size precisely in meters (e.g. --square 0.030)
 
-> Keep the board **flat** and **rigid**. Avoid glossy lamination that causes glare.
+Keep the target flat, matte, and rigid to minimize reflections and warping.
 
----
+3) Data Capture (Stereo Images or Videos)
+Capture 20–40 synchronized pairs from diverse poses:
 
-## 3) Data capture (left/right image pairs or videos)
+Vary distance, tilt, and rotation
 
-Capture at least **20–40 distinct poses**:
-- Vary distance (near/far), tilt, yaw, and position.
-- Cover **all four corners** and center of the image.
-- Use **simultaneous** capture for stereo (ensure timestamps/pairs match).
+Cover all corners of the field of view
 
-Folder structure (example):
-```
+Ensure both cameras capture the same moments
+
+Example folder:
+
+Copy
 calibration_images_dual_eye/
-  
-  cam1_xxx.png
-  cam1_xxx.png
-  ...
-  cam2_xxx.png
-  cam2_xxx.png
-  ...
-```
-> Filenames must match across cam1/cam2 (same count, same ordering), cam1 is the left one, cam2 is the right one.
+├── cam1_0001.png
+├── cam1_0002.png
+│   ...
+├── cam2_0001.png
+├── cam2_0002.png
+│   ...
+cam1 = left, cam2 = right.
+If using video, extract frames before calibration.
 
-If you recorded videos, extract frames first (example command included below).
+4) Intrinsic Calibration
+Run separately for each camera (left/right):
 
----
+bash
+Copy
+python calibration_images_dual_eye/calibration_intrinsics.py
+Output YAML (per camera):
 
-## 4) Intrinsic calibration (per camera)
+K – 3×3 intrinsic matrix
 
-Run for **left** and **right** separately. You can use chessboard or Charuco.
+D – distortion coefficients [k1, k2, p1, p2, k3, …]
 
-### 4.1 Chessboard intrinsics
-```bash
-python calibration_images_dual_eye/calibration_intrinsics.py 
-```
+size – (width, height)
 
+rms – reprojection error
 
-**Outputs (YAML):**
-- `K` (3×3 camera matrix)
-- `D` (distortion: k1, k2, p1, p2, k3[, k4…])
-- `size` (width, height)
-- `rms` (reprojection error)
+🎯 Good target RMS: < 0.5 px (ideal), < 1.0 px (acceptable)
 
-> **Target RMS**: typically **<0.5 px** for good lenses; **<1.0 px** is acceptable.
+5) Stereo Extrinsic Calibration
+After both intrinsics are available:
 
----
-
-## 5) Stereo extrinsic calibration (R, T between cameras)
-
-After **both** intrinsics are done:
-
-```bash
+bash
+Copy
 python calibration_images_dual_eye/stereo_calibration.py
-```
+Outputs (stereo_params.yaml):
 
-**Outputs (YAML):**
-- `K1`, `D1`, `K2`, `D2`
-- `R`, `T` (rotation & translation from left to right)
-- `R1`, `R2`, `P1`, `P2`, `Q` (rectification and reprojection matrices)
-- `rms_stereo` (stereo reprojection error)
-- `baseline` (meters), derived from `T`
+K1, D1, K2, D2
 
-> Tip: if you get **high RMS** (>1.0 px) or **odd baseline**, remove outliers images (blurred/extreme angles) and re-run.
+R, T – rotation & translation (left→right)
 
----
+R1, R2, P1, P2, Q – rectification & projection matrices
+
+rms_stereo – stereo reprojection error
+
+baseline – distance between camera centers (in m)
+
+If RMS > 1.0 px or baseline is unrealistic, remove poor frames and re-run calibration.
+
+6) Depth Estimation & Point-to-Point Measurement
+(OpenCV Enhanced Stereo Pipeline)
+
+After successful calibration, use the provided stereo_depth_enhanced_en.py
+to generate accurate near-field depth maps and interactively measure distances.
+
+bash
+Copy
+python stereo_depth_enhanced_en.py
+⚙️ Processing Pipeline
+Stage	Algorithm	Description
+1. Rectification	OpenCV Rectify	Uses YAML K1,D1,K2,D2,R,T
+2. Dual SGBM	StereoSGBM (block=3 & 7)	Fine + coarse detail disparity
+3. Edge-Aware Fusion	Sobel + Confidence Mask	Blends disparities by edge strength
+4. WLS Filtering	cv2.ximgproc	Removes speckle & halo artifacts
+5. Superpixel Plane Fill	SLIC + RANSAC	Fills holes and flats with fitted planes
+6. Guided Filtering	Edge-preserving	Smooths depth without losing edges
+7. 3D Reprojection	cv2.reprojectImageTo3D	Disparity → metric depth via Q matrix
+8. Interactive Measurement UI	Mouse input	Click two points → 3D distance (meters)
+
+🧠 Features
+Dual-scale SGBM fuses fine and smooth structure
+
+Confidence- and edge-aware fusion for accuracy
+
+Optional superpixel plane reconstruction on flat surfaces
+
+Real-time 2-point distance measurement
+
+Automatic outputs:
+
+Rectified left image *_rectL.jpg
+
+Depth visualization *_depth_vis.jpg
+
+Metric depth PNG *_depth_mm.png
+
+Raw float depth *_depth.npy
+
+Output Directory:
+
+bash
+Copy
+./depth_out_enhanced/
+├── pair_000_rectL.jpg
+├── pair_000_depth_vis.jpg
+├── pair_000_depth_mm.png
+└── pair_000_depth.npy
+🧩 Depth units: meters (.npy), millimeters (.png)
+
+📐 Interactive 2-Point Distance UI
+Left click ×2 : measure distance between points
+
+c : clear annotations
+
+q / ESC : exit
+
+Example console output:
+
+makefile
+Copy
+Selected: (520,310) → (580,320)
+Distance = 0.084 m
+🎯 Use Cases
+Validate stereo calibration accuracy
+
+Obtain ground-truth depth for AI training
+
+Evaluate LUCI Pin dual-eye setup in near-field 3D interaction
+
+7) AI Depth Estimation — CREStereo Integration
+For deeper evaluation, the same stereo pairs can be processed with CREStereo,
+a learning-based stereo matching model by Megvii Research.
+
+bash
+Copy
+python calibration_images_dual_eye/depth_demo_crestereo.py \
+  --left cam1_0001.png --right cam2_0001.png
+Model Highlights:
+
+Cross-scale cost-volume aggregation with attention mechanisms
+
+Handles low-texture and reflective regions better than classical SGBM
+
+Compatible with pretrained weights (crestereo_init_iter5.pth)
+
+Outputs:
+
+crestereo_depth.png – visualized depth map
+
+crestereo_depth.npy – raw depth values (meters)
+
+You can compare CREStereo depths with OpenCV SGBM outputs to evaluate precision, smoothness, and robustness.
+
+💡 Recommendation: use CREStereo for final visual datasets or AI fusion training;
+keep OpenCV SGBM for fast calibration validation and metric evaluation.
+
+8) File Structure Overview
+markdown
+Copy
+calibration_images_dual_eye/
+├── calibration_intrinsics.py
+├── stereo_calibration.py
+├── stereo_depth_enhanced_en.py
+├── depth_demo_crestereo.py
+├── measure_distance.py
+├── dual_eye_calibration.yaml
+└── outputs/
+     ├── disparity.png
+     ├── depth_map.npy
+     ├── crestereo_depth.png
+     └── cloud.ply
+9) Validation Checklist
+✅ Rectified images → epipolar lines are horizontal
+✅ Depth maps → smooth and consistent with object distance
+✅ Measured distances → within ±1–2 cm tolerance
+✅ CREStereo → better performance in low-texture areas
+
+10) References
+OpenCV Camera Calibration Docs — https://docs.opencv.org/master/dc/dbb/tutorial_py_calibration.html
+
+Stereo Depth with SGBM — https://docs.opencv.org/master/dd/d53/tutorial_py_depthmap.html
+
+CREStereo: Megvii Research, Learning Cross-Scale Cost Volume for Stereo Matching, CVPR 2022
+
+Hartley & Zisserman, Multiple View Geometry in Computer Vision, 2nd Ed.
+
+Zach & Pock, A Practical Guide to Optical Flow and Stereo Matching, 2017
 
 
-
----
-
-## 12) References
-
-- OpenCV Camera Calibration: <https://docs.opencv.org/master/dc/dbb/tutorial_py_calibration.html>
-- Stereo Calibration + Rectification: <https://docs.opencv.org/master/dd/d53/tutorial_py_depthmap.html>
-- Charuco Boards: <https://docs.opencv.org/master/d9/d6a/group__aruco.html>
-- Hartley & Zisserman, *Multiple View Geometry in Computer Vision*, 2nd Ed.
-- Zach & Pock, *A Practical Guide to Optical Flow & Stereo Matching*, 2017 (lecture notes)
-
----
-
-### Citation
-
-If this calibration pipeline or the resulting parameters are used in your publication or project, please cite your repo accordingly.
