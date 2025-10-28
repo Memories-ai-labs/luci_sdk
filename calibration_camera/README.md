@@ -93,11 +93,11 @@ python calibration_images_dual_eye/stereo_calibration.py
 ## 🌈 6) Depth Estimation & Point-to-Point Measurement  
 *(OpenCV Stereo Batch Pipeline with 3D Measurement UI)*
 
-After stereo calibration, run **stereo_depth_batch_measure.py** to batch-process all stereo pairs and interactively measure 3D distances.
+After stereo calibration, run **stereo_depth_opencv.py** to batch-process all stereo pairs and interactively measure 3D distances.
 
 ## Run
 
-    python depth_estimation_opencv/stereo_depth_batch_measure.py
+    python depth_estimation_opencv/stereo_depth_opencv.py
 
 ## What it does
 
