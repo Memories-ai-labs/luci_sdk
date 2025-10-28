@@ -35,7 +35,11 @@ It covers network setup, LUCI app connection, and real-time video testing using 
    ```
 
 3. You should now see the **real-time pin view**.
-![screenshot](images/capture.jpg)
+
+<p align="center">
+  <img src="images/capture.jpg" alt="screenshot" width="500"/>
+</p>
+
 ---
 
 ## 🧬 4. Install Dependencies
