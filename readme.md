@@ -59,7 +59,7 @@ You can choose from three modes depending on your experiment setup.
 Record LUCI’s RTSP stream in **real time** and automatically save each 60-second segment locally.
 
 ```bash
-python record_luci_stream.py
+python sdk_save_video/api.py
 ```
 
 ✅ **Features:**
@@ -74,20 +74,8 @@ python record_luci_stream.py
 If you only need to **save short periods on demand**, this SDK first buffers the RTSP stream in **memory**,  
 then saves the desired time range when you trigger a dump command.
 
-```python
-from rtsp_recorder import RtspRecorder
-
-rec = RtspRecorder(
-    rtsp_url="rtsp://192.168.137.38:50001/live/0",
-    mode="memory",          # Cache mode
-    buffer_size=60,         # Cache last 60 seconds
-    save_dir="recording"
-)
-
-rec.start()
-# ... your experiment ...
-rec.dump("clip.ts", start=-15, end=0)  # Save the last 15 seconds
-rec.stop()
+```bash
+python sdk_momory/api.py
 ```
 
 ✅ **Advantages:**
@@ -102,15 +90,8 @@ rec.stop()
 Capture still images from one LUCI camera with **real-time preview**.  
 Useful for calibration, documentation, or quick snapshots.
 
-```python
-from single_camera import SingleCameraCapture
-
-cap = SingleCameraCapture(
-    rtsp_url="rtsp://192.168.137.38:50001/live/0",
-    save_dir="captures",
-    name="cam1"
-)
-cap.run()  # Press 's' to save, 'q' to exit
+```bash
+python sdk_capture/api_capture.py
 ```
 
 ✅ **Features:**
@@ -118,7 +99,7 @@ cap.run()  # Press 's' to save, 'q' to exit
 - Press **‘q’** → Exit  
 - Auto filenames like:  
   ```
-  cam1_2025-08-26_17-05-23.jpg
+  cam_2025-08-26_17-05-23.jpg
   ```
 
 ---
@@ -127,15 +108,8 @@ cap.run()  # Press 's' to save, 'q' to exit
 
 If you use **two LUCI pins** (stereo setup), this SDK allows **synchronized capture**.
 
-```python
-from dual_camera import DualCameraCapture
-
-cap = DualCameraCapture(
-    rtsp1="rtsp://192.168.137.38:50001/live/0",
-    rtsp2="rtsp://192.168.137.39:50001/live/0",
-    save_dir="stereo_captures"
-)
-cap.run()  # Press 's' to save both frames simultaneously
+```bash
+python dual_luci_capture/dual_eye_threaded.py
 ```
 
 ✅ **Features:**
@@ -143,8 +117,8 @@ cap.run()  # Press 's' to save both frames simultaneously
 - Press **‘s’** → Save both images simultaneously  
 - Auto filenames:  
   ```
-  stereo_captures/cam1_2025-08-26_17-08-00.jpg
-  stereo_captures/cam2_2025-08-26_17-08-00.jpg
+  captures/cam1_2025-08-26_17-08-00.jpg
+  captures/cam2_2025-08-26_17-08-00.jpg
   ```
 
 ---
