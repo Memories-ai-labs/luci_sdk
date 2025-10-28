@@ -156,7 +156,7 @@ You can compare CREStereo depths with OpenCV SGBM outputs to evaluate precision,
 
 ---
 
-## 📚 10) References
+## 📚 9) References
 
 - OpenCV Camera Calibration — <https://docs.opencv.org/master/dc/dbb/tutorial_py_calibration.html>  
 - Stereo Depth (SGBM) — <https://docs.opencv.org/master/dd/d53/tutorial_py_depthmap.html>  
