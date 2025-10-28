@@ -1,7 +1,7 @@
 # Stereo Camera Calibration and Depth Estimation — Complete Workflow
 
 This README provides a **comprehensive pipeline** for calibrating **camera intrinsics** and **stereo extrinsics**,  
-then validating results via **enhanced OpenCV-based depth reconstruction** and **AI-based CREStereo depth estimation**.
+then validating results via **OpenCV-based depth reconstruction** and **AI-based CREStereo depth estimation**.
 
 > Designed for reproducibility on Windows/macOS/Linux with OpenCV 4.x.  
 > Supports both **Chessboard** and **Charuco** calibration targets.  
@@ -84,20 +84,20 @@ python calibration_images_dual_eye/stereo_calibration.py
 - `R`, `T` – rotation & translation (left→right)
 - `R1`, `R2`, `P1`, `P2`, `Q` – rectification & projection matrices
 - `rms_stereo` – stereo reprojection error
-- `baseline` – distance between camera centers (in m)
+- `baseline` – distance between camera centers (in m) 
 
 > If RMS > 1.0 px or baseline is unrealistic, remove poor frames and re-run calibration.
 
 ---
 
 ## 🌈 6) Depth Estimation & Point-to-Point Measurement  
-*(Enhanced OpenCV Stereo Pipeline)*
+*( OpenCV Stereo Pipeline)*
 
 After successful calibration, use the provided **`stereo_depth_enhanced_en.py`**  
 to generate accurate near-field depth maps and interactively measure distances.
 
 ```bash
-python stereo_depth_enhanced_en.py
+python depth_estimation_opencv/stereo_depth_opencv.py
 ```
 
 ---
