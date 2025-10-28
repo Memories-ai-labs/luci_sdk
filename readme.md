@@ -21,6 +21,7 @@ It covers network setup, LUCI app connection, and real-time video testing using 
 2. Connect LUCI to the **same hotspot** created by your PC.  
 3. Retrieve the **IP address** assigned to your PC.  
 4. Save LUCI’s **IP address** for later use.
+
 ![internet setup](images/LUCI_internet.png)
 ---
 
