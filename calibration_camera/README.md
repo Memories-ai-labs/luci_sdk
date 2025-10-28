@@ -7,6 +7,12 @@ then validating results via **OpenCV-based depth reconstruction** and **AI-based
 > Supports both **Chessboard** and **Charuco** calibration targets.  
 > Outputs are YAML-compatible and can be reused for 3D reconstruction, robot vision, or LUCI dual-eye experiments.
 
+# Preparation
+
+If anyone would like to try the depth estimation or stereo calibration task for LUCI, don't forget to connect 2 LUCI pins on the same internet route and fix them on a holder. Here, I design a holder and share the STL file for all users.
+
+
+![holder](STLfile.png)
 ---
 
 ## 🧩 1) Environment Setup
