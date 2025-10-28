@@ -5,7 +5,7 @@ We use the pretrained model to infer our stereo images, and the result is shown 
 ```
 python depth_estimation_CREStereo.py
 ```
-![!output](out.jpg)
+![!output](out_test.jpg)
 
 If you want to know more about the CREStereo, please check the following steps.
 
