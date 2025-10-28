@@ -127,8 +127,7 @@ For deeper evaluation, the same stereo pairs can be processed with **CREStereo**
 a learning-based stereo matching model by Megvii Research.
 
 ```bash
-python calibration_images_dual_eye/depth_demo_crestereo.py \
-  --left cam1_0001.png --right cam2_0001.png
+python depth_estimation_CREStereo/image_depth_estimation.py
 ```
 
 **Model Highlights:**
@@ -139,8 +138,7 @@ python calibration_images_dual_eye/depth_demo_crestereo.py \
 
 **Outputs:**
 
-- `crestereo_depth.png` – visualized depth map  
-- `crestereo_depth.npy` – raw depth values (meters)
+- `out.jpg` – visualized depth map  
 
 You can compare CREStereo depths with OpenCV SGBM outputs to evaluate precision, smoothness, and robustness.
 
@@ -149,30 +147,11 @@ You can compare CREStereo depths with OpenCV SGBM outputs to evaluate precision,
 
 ---
 
-## 📁 8) File Structure Overview
-
-```
-calibration_images_dual_eye/
-├── calibration_intrinsics.py
-├── stereo_calibration.py
-├── stereo_depth_enhanced_en.py
-├── depth_demo_crestereo.py
-├── measure_distance.py
-├── dual_eye_calibration.yaml
-└── outputs/
-     ├── disparity.png
-     ├── depth_map.npy
-     ├── crestereo_depth.png
-     └── cloud.ply
-```
-
----
-
-## ✅ 9) Validation Checklist
+## ✅ 8) Validation Checklist
 
 - Rectified images → epipolar lines are **horizontal**  
 - Depth maps → smooth and consistent with object distance  
-- Measured distances → within **±1–2 cm** of real-world value  
+- Measured distances → within **±0.2–1 cm** of real-world value  
 - CREStereo → superior performance in low-texture or glossy regions  
 
 ---
