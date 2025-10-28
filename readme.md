@@ -81,7 +81,7 @@ If you only need to **save short periods on demand**, this SDK first buffers the
 then saves the desired time range when you trigger a dump command.
 
 ```bash
-python sdk_momory/api.py
+python sdk_memory/api.py
 ```
 
 ✅ **Advantages:**
