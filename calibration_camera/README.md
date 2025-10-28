@@ -9,10 +9,10 @@ then validating results via **OpenCV-based depth reconstruction** and **AI-based
 
 # Preparation
 
-If anyone would like to try the depth estimation or stereo calibration task for LUCI, don't forget to connect 2 LUCI pins on the same internet route and fix them on a holder. Here, I design a holder and share the STL file for all users.
+If anyone would like to try the depth estimation or stereo calibration task for LUCI, don't forget to connect 2 LUCI pins on the same internet route and fix them on a support. Here, I design a support and share the STL file for all users.
 
 
-![holder](STLfile.png)
+![support](luciholder.png)
 ---
 
 ## 🧩 1) Environment Setup
