@@ -1,9 +1,11 @@
 # ONNX-CREStereo-Depth-Estimation for our project 
 
+We use the pretrained model to infer our stereo images, and the result is shown below.
+
 ```
 python depth_estimation_CREStereo.py
 ```
-![!output](output.jpg)
+![!output](out.jpg)
 
 If you want to know more about the CREStereo, please check the following steps.
 
