@@ -1,3 +1,12 @@
+# ONNX-CREStereo-Depth-Estimation for our project 
+
+```
+python depth_estimation_CREStereo.py
+```
+![!output](output.jpg)
+
+If you want to know more about the CREStereo, please check the following steps.
+
 # ONNX-CREStereo-Depth-Estimation
  Python scripts performing stereo depth estimation using the CREStereo model in ONNX.
  
