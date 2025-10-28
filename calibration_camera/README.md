@@ -91,78 +91,35 @@ python calibration_images_dual_eye/stereo_calibration.py
 ---
 
 ## 🌈 6) Depth Estimation & Point-to-Point Measurement  
-*( OpenCV Stereo Pipeline)*
+*(OpenCV Stereo Batch Pipeline with 3D Measurement UI)*
 
-After successful calibration, use the provided **`stereo_depth_enhanced_en.py`**  
-to generate accurate near-field depth maps and interactively measure distances.
+After stereo calibration, run **stereo_depth_batch_measure.py** to batch-process all stereo pairs and interactively measure 3D distances.
 
-```bash
-python depth_estimation_opencv/stereo_depth_opencv.py
-```
+## Run
 
----
+    python depth_estimation_opencv/stereo_depth_batch_measure.py
 
-### ⚙️ Processing Pipeline
+## What it does
 
-| Stage | Algorithm | Description |
-|-------|------------|-------------|
-| **1. Rectification** | OpenCV Rectify | Uses YAML `K1,D1,K2,D2,R,T` |
-| **2. Dual SGBM** | StereoSGBM (block=3 & 7) | Fine + coarse detail disparity |
-| **3. Edge-Aware Fusion** | Sobel + Confidence Mask | Blends disparities by edge strength |
-| **4. WLS Filtering** | `cv2.ximgproc` | Removes speckle & halo artifacts |
-| **5. Superpixel Plane Fill** | SLIC + RANSAC | Fills holes and flats with fitted planes |
-| **6. Guided Filtering** | Edge-preserving | Smooths depth without losing edges |
-| **7. 3D Reprojection** | `cv2.reprojectImageTo3D` | Disparity → metric depth via `Q` matrix |
-| **8. Interactive Measurement UI** | Mouse input | Click two points → 3D distance (meters) |
+- Finds all stereo pairs in `../test_images` by filename keys `cam1` / `cam2`
+- Loads calibration from `../stereo_out/stereo_params.yaml` (supports OpenCV YAML and JSON-in-YAML)
+- Rectifies images, computes disparity via StereoSGBM, reprojects to 3D using `Q`
+- Saves rectified views, disparity/depth visualizations, and raw arrays
+- Optional per-pair interactive UI to click two points and log their 3D distance
 
----
+## Processing steps
 
-### 🧠 Features
+1. Pair detection (filename matching with `cam1` → `cam2`)
+2. Rectification (`stereoRectify` + `initUndistortRectifyMap`)
+3. Stereo matching (StereoSGBM, blockSize=5, numDisparities=192)
+4. 3D reprojection (`reprojectImageTo3D`, units in meters)
+5. Depth visualization (pseudo-color, 95th-percentile normalization)
+6. Batch saving (PNG + NPY)
+7. Interactive 2-point measurement (optionally save CSV + annotated image)
 
-- Dual-scale SGBM fuses fine and smooth structure  
-- Confidence- and edge-aware fusion for accuracy  
-- Optional superpixel plane reconstruction on flat surfaces  
-- Real-time 2-point distance measurement  
-- Automatic outputs:
-  - Rectified left image `*_rectL.jpg`  
-  - Depth visualization `*_depth_vis.jpg`  
-  - Metric depth PNG `*_depth_mm.png`  
-  - Raw float depth `*_depth.npy`
+## Output directory structure
 
-**Output Directory:**
-```
-./depth_out_enhanced/
-├── pair_000_rectL.jpg
-├── pair_000_depth_vis.jpg
-├── pair_000_depth_mm.png
-└── pair_000_depth.npy
-```
 
-> 🧩 Depth units: meters (`.npy`), millimeters (`.png`)
-
----
-
-### 📐 Interactive 2-Point Distance UI
-
-- **Left click ×2 :** measure distance between points  
-- **c :** clear annotations  
-- **q / ESC :** exit  
-
-Example console output:
-```
-Selected: (520,310) → (580,320)
-Distance = 0.084 m
-```
-
----
-
-### 🎯 Use Cases
-
-- Validate stereo calibration accuracy  
-- Obtain ground-truth depth for AI training  
-- Evaluate LUCI Pin dual-eye setup in near-field 3D interaction  
-
----
 
 ## 🧠 7) AI Depth Estimation — CREStereo Integration
 
