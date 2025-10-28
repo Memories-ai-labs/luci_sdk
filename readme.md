@@ -12,6 +12,7 @@ It covers network setup, LUCI app connection, and real-time video testing using 
 1. Turn on the **hotspot function** on your PC.  
 2. Connect your **mobile phone** to this hotspot.
 
+![Hotspot setup](images/hotspot_setup.png)
 ---
 
 ## 📲 2. Access LUCI
@@ -166,7 +167,7 @@ By performing dual-eye calibration on a single-eye LUCI system, we can:
 - Provide **stereo ground-truth datasets** for AI learning  
 - Enable **3D understanding** for interaction and robotics applications  
 
-![Stereo Calibration Concept](images/stereo_calibration.png)
+
 
 ---
 
