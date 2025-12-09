@@ -20,6 +20,33 @@ def _run_adb_command(cmd: List[str]) -> str:
     except Exception as e:
         raise RuntimeError(f"ADB failed: {e}")
 
+def add_tooltip(widget, text):
+    tip = tk.Toplevel(widget)
+    tip.withdraw()
+    tip.overrideredirect(True)
+
+    label = tk.Label(
+        tip,
+        text=text,
+        bg="lightyellow",
+        relief="solid",
+        borderwidth=1,
+        padx=6,
+        pady=3
+    )
+    label.pack()
+
+    def show(event):
+        tip.geometry(f"+{event.x_root + 10}+{event.y_root + 10}")
+        tip.deiconify()
+
+    def hide(event):
+        tip.withdraw()
+
+    widget.bind("<Enter>", show)
+    widget.bind("<Leave>", hide)
+
+
 
 # ======================================================
 #  ADB CONNECTION CLASS
@@ -77,6 +104,8 @@ class ADBLUCIConnection:
         self._shell(f"rm -rf '{path}'")
 
 
+
+
 # ======================================================
 #  GUI FILE BROWSER
 # ======================================================
@@ -88,33 +117,129 @@ class FileBrowserGUI:
         self.window = tk.Tk()
         self.window.title("LUCI Pin ADB File Browser")
         self.window.geometry("700x650")
+        style = ttk.Style()
+        style.theme_use("clam")
 
-        # PATH LABEL
-        self.path_label = tk.Label(self.window, text=self.current_path, font=("Arial", 12))
-        self.path_label.pack(fill="x")
+        # ------------------ BREADCRUMB BAR ------------------
+        self.breadcrumb_frame = tk.Frame(self.window, pady=6)
+        self.breadcrumb_frame.pack(fill="x")
 
         # FILE LIST TREE
         self.tree = ttk.Treeview(self.window)
+        # Alternate row colors
+        self.tree.tag_configure("even", background="#f7f7f7")
+        self.tree.tag_configure("odd", background="#ffffff")
+
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<Double-1>", self.on_double_click)
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
+        # ------------------ RIGHT CLICK MENU ------------------
+        self.menu = tk.Menu(self.window, tearoff=0)
+        self.menu.add_command(label="Download", command=self.download_file)
+        self.menu.add_command(label="Delete", command=self.delete_item)
+
+        def update_breadcrumbs(self):
+            # Clear old breadcrumbs
+            for widget in self.breadcrumb_frame.winfo_children():
+                widget.destroy()
+
+            path = self.current_path.strip("/")
+
+            # Root button
+            root_btn = tk.Button(
+                self.breadcrumb_frame,
+                text="/",
+                relief="flat",
+                command=lambda p="/": self.navigate_to(p)
+            )
+            root_btn.pack(side="left")
+            add_tooltip(root_btn, "Go to root")
+
+            if not path:
+                return
+
+            parts = path.split("/")
+            current = ""
+
+            for part in parts:
+                current += "/" + part
+
+                sep = tk.Label(self.breadcrumb_frame, text=" > ")
+                sep.pack(side="left")
+
+                btn = tk.Button(
+                    self.breadcrumb_frame,
+                    text=part,
+                    relief="flat",
+                    command=lambda p=current: self.navigate_to(p)
+                )
+                btn.pack(side="left")
+
+                add_tooltip(btn, f"Go to {current}")
+
+        def navigate_to(self, path):
+            self.current_path = path
+            self.preview_label.config(image="", text="Select a file for preview")
+            self.refresh()
+
+        def show_menu(event):
+            try:
+                self.tree.selection_set(self.tree.identify_row(event.y))
+                self.menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                self.menu.grab_release()
+
+        self.tree.bind("<Button-3>", show_menu)
 
         # PREVIEW AREA
         self.preview_label = tk.Label(self.window, text="Select a file for preview", pady=10)
         self.preview_label.pack()
 
         # BUTTON BAR
-        btn_frame = tk.Frame(self.window)
+        btn_frame = tk.Frame(self.window, pady=8)
         btn_frame.pack(fill="x")
 
-        tk.Button(btn_frame, text="↑ Up", command=self.go_up).pack(side="left")
-        tk.Button(btn_frame, text="Upload", command=self.upload_file).pack(side="left")
-        tk.Button(btn_frame, text="Download", command=self.download_file).pack(side="left")
-        tk.Button(btn_frame, text="Delete", command=self.delete_item).pack(side="left")
-        tk.Button(btn_frame, text="Refresh", command=self.refresh).pack(side="left")
+        up_btn = tk.Button(btn_frame, text="↑ Up", command=self.go_up)
+        up_btn.pack(side="left")
+
+        upload_btn = tk.Button(btn_frame, text="Upload", command=self.upload_file)
+        upload_btn.pack(side="left")
+
+        download_btn = tk.Button(btn_frame, text="Download", command=self.download_file)
+        download_btn.pack(side="left")
+
+        delete_btn = tk.Button(btn_frame, text="Delete", command=self.delete_item)
+        delete_btn.pack(side="left")
+
+        refresh_btn = tk.Button(btn_frame, text="Refresh", command=self.refresh)
+        refresh_btn.pack(side="left")
+
+        add_tooltip(up_btn, "Go to parent directory")
+        add_tooltip(upload_btn, "Upload a file to this folder")
+        add_tooltip(download_btn, "Download selected file")
+        add_tooltip(delete_btn, "Delete selected file")
+        add_tooltip(refresh_btn, "Reload folder contents")
 
         # keep reference to PhotoImage to avoid GC
         self.tk_img = None
+
+        self.window.bind("<F5>", lambda e: self.refresh())
+        self.window.bind("<Delete>", lambda e: self.delete_item())
+
+
+
+        # ------------------ STATUS BAR ------------------
+        self.status_var = tk.StringVar(value="Ready")
+
+        self.status_bar = tk.Label(
+            self.window,
+            textvariable=self.status_var,
+            anchor="w",
+            bg="#f0f0f0",
+            padx=8,
+            pady=4
+        )
+        self.status_bar.pack(fill="x", side="bottom")
 
         self.refresh()
 
@@ -197,6 +322,47 @@ class FileBrowserGUI:
         # OTHER FILES
         self.preview_label.config(image="", text="Select a file for preview")
 
+    def update_breadcrumbs(self):
+        # Clear old breadcrumbs
+        for widget in self.breadcrumb_frame.winfo_children():
+            widget.destroy()
+
+        path = self.current_path.strip("/")
+
+        # Root button
+        root_btn = tk.Button(
+            self.breadcrumb_frame,
+            text="/",
+            relief="flat",
+            command=lambda p="/": self.navigate_to(p)
+        )
+        root_btn.pack(side="left")
+
+        if not path:
+            return
+
+        parts = path.split("/")
+        current = ""
+
+        for part in parts:
+            current += "/" + part
+
+            sep = tk.Label(self.breadcrumb_frame, text=" > ")
+            sep.pack(side="left")
+
+            btn = tk.Button(
+                self.breadcrumb_frame,
+                text=part,
+                relief="flat",
+                command=lambda p=current: self.navigate_to(p)
+            )
+            btn.pack(side="left")
+
+    def navigate_to(self, path):
+        self.current_path = path
+        self.preview_label.config(image="", text="Select a file for preview")
+        self.refresh()
+
     # ======================================================
     #  FILE LISTING AND NAVIGATION
     # ======================================================
@@ -204,12 +370,16 @@ class FileBrowserGUI:
         self.tree.delete(*self.tree.get_children())
         files = self.conn.list_files(self.current_path)
 
-        for f in files:
+        for i, f in enumerate(files):
             full_path = f"{self.current_path.rstrip('/')}/{f}".replace("//", "/")
             tag = "dir" if self.conn.is_dir(full_path) else "file"
-            self.tree.insert("", "end", text=f, values=[full_path], tags=(tag,))
+            icon = "📁" if tag == "dir" else "📄"
+            row_tag = "even" if i % 2 == 0 else "odd"
+            self.tree.insert("", "end", text=f, values=[full_path], tags=(tag, row_tag))
 
-        self.path_label.config(text=self.current_path)
+        self.update_breadcrumbs()
+
+        self.status_var.set("Ready")
 
     def on_double_click(self, event):
         item = self.tree.selection()
@@ -244,6 +414,8 @@ class FileBrowserGUI:
     #  FILE ACTIONS
     # ======================================================
     def upload_file(self):
+        self.status_var.set("Uploading file...")
+        self.window.update_idletasks()
         filepath = filedialog.askopenfilename()
         if not filepath:
             return
@@ -252,8 +424,11 @@ class FileBrowserGUI:
         else:
             messagebox.showerror("Upload", "Upload failed")
         self.refresh()
+        self.status_var.set("Upload complete")
 
     def download_file(self):
+        self.status_var.set("Downloading file...")
+        self.window.update_idletasks()
         item = self.tree.selection()
         if not item:
             return
@@ -266,6 +441,7 @@ class FileBrowserGUI:
 
         if self.conn.pull_file(full_path, savepath):
             messagebox.showinfo("Download", "Download successful")
+            self.status_var.set("Download complete")
         else:
             messagebox.showerror("Download", "Download failed")
 
