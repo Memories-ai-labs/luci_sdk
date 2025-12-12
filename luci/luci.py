@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import re
 
 from sdk_capture.capture_sdk import SingleCameraCapture
 from .device import DeviceAPI
@@ -17,14 +18,19 @@ class LUCI:
         luci.view_stream()
     """
 
+    # ======================================================
+    # Initialization
+    # ======================================================
     def __init__(self, device_id: str):
         if not device_id:
             raise ValueError("LUCI requires a valid device_id")
+
         self.device_id = device_id
+        # Always initialize IP cache
         self._ip_address: str | None = None
 
     # ======================================================
-    # Connection
+    # ADB Connection
     # ======================================================
     @classmethod
     def connect_via_adb(cls) -> "LUCI":
@@ -53,7 +59,7 @@ class LUCI:
     # ======================================================
     def join_hotspot(self, ssid: str, password: str) -> "LUCI":
         """
-        Join a Wi-Fi hotspot using the existing setup_hotspot_connection.py script.
+        Join a Wi-Fi hotspot using setup_hotspot_connection.py.
         """
         if not ssid or not password:
             raise ValueError("SSID and password are required")
@@ -85,7 +91,7 @@ class LUCI:
         if result.returncode != 0:
             raise RuntimeError(result.stderr or result.stdout)
 
-        # Cache IP address after connection
+        # Detect and cache IP immediately after hotspot join
         self._ip_address = self._detect_ip()
 
         if self._ip_address:
@@ -95,16 +101,18 @@ class LUCI:
 
         return self
 
+    # ======================================================
+    # IP Detection (robust for embedded Linux)
+    # ======================================================
     def _detect_ip(self) -> str | None:
         """
         Detect IP address using multiple fallback methods.
-        Works on BusyBox / embedded Linux.
+        Designed for BusyBox / embedded Linux environments.
         """
-
         commands = [
             "ip addr show wlan0",
             "ifconfig wlan0",
-            "udhcpc -n -q -i wlan0",
+            "route -n",
         ]
 
         for cmd in commands:
@@ -115,12 +123,33 @@ class LUCI:
                 text=True
             )
 
-            out = result.stdout
-            for token in out.replace(":", " ").split():
-                if token.count(".") == 3 and token[0].isdigit():
-                    return token
+            output = result.stdout
+            matches = re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", output)
+
+            for ip in matches:
+                # Filter loopback and invalid addresses
+                if not ip.startswith(("127.", "0.")):
+                    return ip
 
         return None
+
+    # ======================================================
+    # Public IP accessor (IMPORTANT)
+    # ======================================================
+    @property
+    def ip_address(self) -> str | None:
+        """
+        Return the best-known IP address.
+
+        Priority:
+        1. Cached IP from hotspot join
+        2. Live detection via ADB
+        """
+        if self._ip_address:
+            return self._ip_address
+
+        self._ip_address = self._detect_ip()
+        return self._ip_address
 
     # ======================================================
     # Device API
@@ -137,16 +166,25 @@ class LUCI:
     # ======================================================
     def view_stream(
         self,
+        ip: str | None = None,
         port: int = 50001,
         path: str = "/live/0"
     ):
         """
         Open and display the RTSP video stream.
+
+        Args:
+            ip: Optional manual IP override
+            port: RTSP port
+            path: RTSP path
         """
-        ip = self._ip_address or self.device.ip_address()
+        ip = ip or self.ip_address
+
         if not ip:
             raise RuntimeError(
-                "Device IP unknown. Connect to hotspot first."
+                "Device IP unknown.\n"
+                "Ensure hotspot is connected or provide IP manually:\n"
+                "    luci.view_stream(ip='192.168.x.x')"
             )
 
         rtsp_url = f"rtsp://{ip}:{port}{path}"
