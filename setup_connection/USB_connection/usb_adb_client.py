@@ -214,6 +214,14 @@ class FileBrowserGUI:
         refresh_btn = tk.Button(btn_frame, text="Refresh", command=self.refresh)
         refresh_btn.pack(side="left")
 
+        wifi_btn = tk.Button(
+            btn_frame,
+            text="📡 Connect Hotspot",
+            command=self.connect_hotspot
+        )
+        wifi_btn.pack(side="left")
+
+        add_tooltip(wifi_btn, "Connect LUCI Pin to a Wi-Fi hotspot")
         add_tooltip(up_btn, "Go to parent directory")
         add_tooltip(upload_btn, "Upload a file to this folder")
         add_tooltip(download_btn, "Download selected file")
@@ -242,6 +250,76 @@ class FileBrowserGUI:
         self.status_bar.pack(fill="x", side="bottom")
 
         self.refresh()
+
+    def connect_hotspot(self):
+        dialog = tk.Toplevel(self.window)
+        dialog.title("Connect to Hotspot")
+        dialog.geometry("300x180")
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        tk.Label(dialog, text="Hotspot SSID:").pack(pady=(10, 0))
+        ssid_entry = tk.Entry(dialog)
+        ssid_entry.pack(fill="x", padx=20)
+
+        tk.Label(dialog, text="Password:").pack(pady=(10, 0))
+        pass_entry = tk.Entry(dialog, show="*")
+        pass_entry.pack(fill="x", padx=20)
+
+        def submit():
+            ssid = ssid_entry.get().strip()
+            password = pass_entry.get().strip()
+
+            if not ssid or not password:
+                messagebox.showerror("Error", "SSID and password are required")
+                return
+
+            dialog.destroy()
+            self.run_hotspot_script(ssid, password)
+
+        tk.Button(dialog, text="Connect", command=submit).pack(pady=15)
+
+    def run_hotspot_script(self, ssid, password):
+        self.status_var.set("Connecting to hotspot...")
+        self.window.update_idletasks()
+
+        # usb_adb_client.py is in:
+        # project_root/setup_connection/USB_connection/
+        # We need to go up one level, then into Wireless_connection
+        script_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "Wireless_connection",
+                "setup_hotspot_connection.py"
+            )
+        )
+
+        try:
+            result = subprocess.run(
+                ["python", script_path, ssid, password],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            if result.returncode == 0:
+                messagebox.showinfo(
+                    "Hotspot Connection",
+                    "LUCI Pin successfully connected to hotspot.\n\n"
+                    "You can now access the RTSP stream."
+                )
+                self.status_var.set("Hotspot connected")
+            else:
+                messagebox.showerror(
+                    "Hotspot Connection Failed",
+                    result.stderr or result.stdout
+                )
+                self.status_var.set("Hotspot connection failed")
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+            self.status_var.set("Hotspot connection error")
 
     # ======================================================
     #  THUMBNAIL GENERATION FOR MP4 FILES
